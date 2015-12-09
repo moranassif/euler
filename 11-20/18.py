@@ -1,6 +1,7 @@
 __author__ = 'Moran'
 
 import networkx
+import matplotlib.pyplot as plt
 
 triag = """75
 95 64
@@ -20,5 +21,112 @@ triag = """75
 
 lines = triag.splitlines()
 lines = [line.split() for line in lines]
-print(lines)
+
+
+def dag_longest_path(G, weight='weight', default_weight=1):
+    """Returns the longest path in a DAG
+    If G has edges with 'weight' attribute the edge data are used as weight values.
+
+    Parameters
+    ----------
+    G : NetworkX DiGraph
+        Graph
+
+    weight : string (default 'weight')
+        Edge data key to use for weight
+
+    default_weight : integer (default 1)
+        The weight of edges that do not have a weight attribute
+
+    Returns
+    -------
+    path : list
+        Longest path
+
+    Raises
+    ------
+    NetworkXNotImplemented
+        If G is not directed
+
+    See also
+    --------
+    dag_longest_path_length
+    """
+    dist = {} # stores {v : (length, u)}
+    for v in networkx.topological_sort(G):
+        us = [(dist[u][0] + data.get(weight, default_weight), u)
+            for u, data in G.pred[v].items()]
+        # Use the best predecessor if there is one and its distance is non-negative, otherwise terminate.
+        maxu = max(us) if us else (0, v)
+        dist[v] = maxu if maxu[0] >= 0 else (0, v)
+    u = None
+    v = max(dist, key=dist.get)
+    path = []
+    while u != v:
+        path.append(v)
+        u = v
+        v = dist[v][1]
+    path.reverse()
+    return path
+
+
+
+def dag_longest_path_length(G):
+    """Returns the longest path length in a DAG
+
+    Parameters
+    ----------
+    G : NetworkX DiGraph
+        Graph
+
+    Returns
+    -------
+    path_length : int
+        Longest path length
+
+    Raises
+    ------
+    NetworkXNotImplemented
+        If G is not directed
+
+    See also
+    --------
+    dag_longest_path
+    """
+    path_length = len(networkx.dag_longest_path(G)) - 1
+    return path_length
+
+g = networkx.DiGraph()
+# Build the graph
+line_num = 1
+g.add_node((0, 0))
+prev_line = lines[0]
+for line in lines[1:]:
+    print("line is {}".format(line))
+    for i in range(len(prev_line)):
+        print("i is {}".format(i))
+        g.add_edge((line_num-1, i), (line_num, i), weight=int(line[i]))
+        print("Adding from {} to {} with weight {}".format((line_num-1, i), (line_num, i), 1/int(line[i])))
+        g.add_edge((line_num-1, i), (line_num, i+1), weight=int(line[i+1]))
+        print("Adding from {} to {} with weight {}".format((line_num-1, i), (line_num, i+1), 1/int(line[i+1])))
+    line_num += 1
+    prev_line = line
+# Add collection node
+g.add_node((-1, -1))
+for i in range(len(prev_line)):
+    g.add_edge((line_num-1, i), (-1, -1), weight=1)
+
+#networkx.draw_networkx(g, with_labels=True)
+#plt.show()
+
+# Find the shortest path
+path = dag_longest_path(g, weight="weight")
+sum = 0
+for (line_num, elem_num) in path[:-1]:
+    print("adding {}".format(lines[line_num][elem_num]))
+    sum += int(lines[line_num][elem_num])
+
+# Subtract the last one
+print(path)
+print(sum)
 
